@@ -74,11 +74,11 @@ An object with the following fields:
 		- length <natural number> how long in this segment?
 		- space <natural number> ID of space (0 == INTIMATE, 1 = PERSONAL, 2 = SOCIAL, 3 = PUBLIC)
 
-	Definitions of 'space' based on Hall's work:
-		Intimate Space: [0, 45) cm
-		Personal Space: [45, 120) cm
-		Social Space: [120, 360) cm
-		Public Space: [360, inf) cm
+Definitions of 'space' based on Hall's work:
+- Intimate Space (space == 0): [0, 45) cm
+- Personal Space (space == 1): [45, 120) cm
+- Social Space (space == 2): [120, 360) cm
+- Public Space (space == 3): [360, inf) cm
 
 ### Errors
 400: If any of the params are out of domain as defined above
