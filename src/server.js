@@ -5,6 +5,36 @@ var express = require('express');
 var bodyParser = require('body-parser');
 // end requires
 
+// some shared constants
+var INTIMATE_SPACE = 0;
+var PERSONAL_SPACE = 1;
+var SOCIAL_SPACE = 2;
+var PUBLIC_SPACE = 3;
+
+var INTIMATE_SPACE_LIM = 45;
+var PERSONAL_SPACE_LIM = 120;
+var SOCIAL_SPACE_LIM = 360;
+
+var NUM_NEIGHBORS = 10;
+// end constants
+
+// helper fns
+
+function getSpace(x) {
+	if (x < INTIMATE_SPACE_LIM) {
+		return INTIMATE_SPACE;
+	} 
+	else if (x < PERSONAL_SPACE_LIM) {
+		return PERSONAL_SPACE;
+	} 
+	else if (x < SOCIAL_SPACE_LIM) {
+		return SOCIAL_SPACE;
+	} 
+	else {
+		return PUBLIC_SPACE;
+	}
+}
+
 // expected error handling, just send message and code as per spec
 function sendError(res, code, message) {
 	res.status(code).json({ message: message });
@@ -21,6 +51,10 @@ function sendServerError(endPointName, res, err) {
 function validNaturalNumber(id, min) {
 	return Number.isFinite(id) && id >= min;
 }
+
+// end helper fns
+
+// api factory fns
 
 /**
  * Creates a router which defines all of the API end-points for IPD-based queries
@@ -121,16 +155,64 @@ function createIPDEndpoints(knex) {
 				res.json();
 			})
 			.catch(function (err) {
-				// TODO what is err.code for other backends?
-				if (err.code == "SQLITE_CONSTRAINT") {
-					sendError(res, 400, "Cannot add the same distance pair twice");
-				} else {
-					sendServerError("POST /ipd/<playerID>/add", res, err);
-				}
+				sendServerError("POST /ipd/<playerID>/add", res, err);
 			});
 	});
 
 	return router;
+}
+
+/**
+ * Process a sequence of IPD's for a single entityID
+ * @returns All the insights gained from this sequence of IPD's
+ */
+function processIPDRows(rows) {
+	var min = Number.POSITIVE_INFINITY;
+	var max = Number.NEGATIVE_INFINITY;
+	var mean = 0;
+	var mean2 = 0;
+	var count = rows.length;
+	var crosses = [];
+	var delta, delta2, distance, space;
+
+
+	for (var i = 0; i < count; i++) {
+		distance = rows[i].distance;
+
+		// simple min/max algorithm
+		min = Math.min(min, distance);
+		max = Math.max(max, distance);
+
+		// welford knuth variance/mean algorithm
+		delta = distance - mean;
+		mean += delta / (i + 1);
+		delta2 = distance - mean;
+		mean2 += delta * delta2;
+
+		// crossing algorithm
+		space = getSpace(distance);
+		// initialization or crossed from one space to another
+		if (crosses.length == 0 || crosses[crosses.length-1].space != space) {
+			crosses.push({
+				length: 1,
+				space: space,
+			});
+		}
+		// increase length of cross
+		else {
+			crosses[crosses.length-1].length++;
+		}
+	}
+	// variance is undefined for count == 1
+	var variance = count > 1 ? mean2 / (count - 1) : Number('nan');
+	return {
+		min: min,
+		max: max,
+		mean: mean,
+		count: count,
+		variance: variance,
+		crosses: crosses,
+	};
 }
 
 /**
@@ -139,10 +221,6 @@ function createIPDEndpoints(knex) {
  */
 function createInsightEndpoints(knex) {
 	var router = express.Router();
-
-	var INTIMATE = 45;
-	var PERSONAL = 120;
-	var SOCIAL = 360;
 
 	// get insights based on IPD
 	router.get('/ipd/:playerID', function (req, res) {
@@ -154,55 +232,53 @@ function createInsightEndpoints(knex) {
 			return sendError(res, 400, "'playerID' must be a non-zero natural number");
 		}
 
+		/*
+		  Find the 'nearest neighbors' to playerID
+		  Define the distance between two playerIDs as being the difference between their average IPD's to all entities
+		  The following is based on this query:
+		    
+		    SELECT `playerID` as `id`, AVG(`distance`) - ( SELECT AVG(`distance`) from `ipds` WHERE `playerID` = ?) as `neighbor_dist`
+		 	FROM `ipds` 
+		 	WHERE NOT `playerID` = ?
+		 	GROUP BY `playerID` 
+		 	SORT BY `neighbor_dist`
+		 	LIMIT ?
+
+		 */
+		var raw_inner = knex.raw("AVG(distance) - ( SELECT AVG(distance) from ipds WHERE `playerID` = ? ) as neighbor_dist", [ playerID ]);
+		var neighbor_query = knex('ipds')
+			.select('playerID as id', raw_inner)
+			.groupBy('playerID')
+			.orderBy('neighbor_dist')
+			.whereNot('playerID', playerID)
+			.limit(NUM_NEIGHBORS);
+
+		// this query does all the statistical insights
+		// we could have used a GROUP BY with an MIN/AVG/MAX/COUNT fn-s,
+		// but I also wanted to determine time spent in a specific "space" and number of times crossed from space X to Y, etc.
+		// see processIPDRows for details about statistics gained
 		var stats_query = knex('ipds')
 			.where('playerID', playerID)
-			.min('distance as min')
-			.max('distance as max')
-			.avg('distance as average')
-			.count('distance as count')
-			.then(function (x) {
-				return x[0];
+			.orderBy('id', 'asc')
+			.then(function (rows) {
+				var aggregated = rows.reduce(function (accum, row) {
+					if (!accum[row.entityID])
+						accum[row.entityID] = []
+					accum[row.entityID].push(row);
+					return accum;
+				}, {});
+
+				var stats = {};
+				for (var entityID in aggregated) {
+					stats[entityID] = processIPDRows(aggregated[entityID]);
+				}
+
+				return stats;
 			});
-
-		function transform_rows(rows) {
-			return rows.reduce(function (accum, next) {
-				accum.push(next.id);
-				return accum;
-			}, []);
-		}
-
-		var initimate_query = knex('ipds')
-			.select('entityID as id')
-			.where('playerID', playerID)
-			.where('distance', '<', INTIMATE)
-			.then(transform_rows);
-		
-		var personal_query = knex('ipds')
-			.select('entityID as id')
-			.where('playerID', playerID)
-			.where('distance', '>=', INTIMATE)
-			.where('distance', '<', PERSONAL)
-			.then(transform_rows);
-
-		var social_query = knex('ipds')
-			.select('entityID as id')
-			.where('playerID', playerID)
-			.where('distance', '>=', PERSONAL)
-			.where('distance', '<', SOCIAL)
-			.then(transform_rows);
-
-		var public_query = knex('ipds')
-			.select('entityID as id')
-			.where('playerID', playerID)
-			.where('distance', '>=', SOCIAL)
-			.then(transform_rows);
 
 		Promise.props({
 			stats: stats_query,
-			intimate_space: initimate_query,
-			personal_space: personal_query,
-			social_space: social_query,
-			public_space: public_query,
+			neighbors: neighbor_query,
 		})
 		.then(function (data) {
 			res.json(data);
@@ -227,6 +303,8 @@ function createAPI(knex) {
 
 	return router;
 }
+
+// end api factory fns
 
 /**
  * Create the express application and return it

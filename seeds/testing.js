@@ -12,6 +12,11 @@ exports.seed = function(knex, Promise) {
           entityID: i,
           distance: 10,
         });
+        data.push({
+          playerID: 1,
+          entityID: i,
+          distance: 10,
+        });
       }
 
       // create a person who has a linear distance to entities
@@ -21,10 +26,20 @@ exports.seed = function(knex, Promise) {
           entityID: i,
           distance: 10 * i,
         });
+        data.push({
+          playerID: 2,
+          entityID: i,
+          distance: 10 * i,
+        });
       }
 
       // create a person who has a a bunch distance pairs to entities
       for (var i = 1; i <= 10000; i++) {
+        data.push({
+          playerID: 3,
+          entityID: i,
+          distance: 10 * i,
+        });
         data.push({
           playerID: 3,
           entityID: i,

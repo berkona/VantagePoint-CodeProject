@@ -57,7 +57,7 @@ describe("server.js", function () {
 							expect(res.body).to.have.property('distances');
 							expect(res.body.distances).to.be.an('array');
 							expect(res.body.distances).to.have.lengthOf(200);
-							for (var i = res.body.distances.length - 1; i > 0; i--) {
+							for (var i = 0; i < res.body.distances; i += 2) {
 								var pair = res.body.distances[i];
 								expect(pair).to.have.property('id');
 								expect(pair).to.have.property('d');
@@ -115,16 +115,6 @@ describe("server.js", function () {
 					});
 		});
 
-		it('should not be able to add the same pair twice', function() {
-			return chai.request(app)
-						.post('/ipd/1/add')
-						.send({ id: 1, d: 0 })
-						.then(function (res) {
-							expect(res).to.have.status(200);
-							return expectPostError(app, 400, '/ipd/1/add', { id: 1, d: 0 });
-						});
-		});
-
 		// some fail condition checking (again not exhaustive)
 		it('should fail if playerID is not an int', function() {
 			return expectPostError(app, 400, '/ipd/foo/add', { id: 1, d: 0 });
@@ -176,32 +166,24 @@ describe("server.js", function () {
 							expect(res).to.have.status(200);
 							expect(res).to.be.json;
 							expect(res).to.have.property('body');
+
 							expect(res.body).to.have.property('stats');
-							expect(res.body.stats).to.have.property('min');
-							expect(res.body.stats).to.have.property('max');
-							expect(res.body.stats).to.have.property('average');
-							expect(res.body.stats).to.have.property('count');
+							expect(res.body.stats).to.be.an('object');
+							
+							for (var entityID in res.body.stats) {
+								var stat = res.body.stats[entityID];
+								expect(stat).to.have.property('min');
+								expect(stat).to.have.property('max');
+								expect(stat).to.have.property('mean');
+								expect(stat).to.have.property('count');
+								expect(stat).to.have.property('variance');
 
-							expect(res.body.stats.min).to.equal(10);
-							expect(res.body.stats.max).to.equal(10);
-							expect(res.body.stats.average).to.equal(10);
-							expect(res.body.stats.count).to.equal(200);
-
-							expect(res.body).to.have.property('intimate_space');
-							expect(res.body.intimate_space).to.be.an('array');
-							expect(res.body.intimate_space).to.have.lengthOf(200);
-
-							expect(res.body).to.have.property('personal_space');
-							expect(res.body.personal_space).to.be.an('array');
-							expect(res.body.personal_space).to.have.lengthOf(0);
-
-							expect(res.body).to.have.property('social_space');
-							expect(res.body.social_space).to.be.an('array');
-							expect(res.body.social_space).to.have.lengthOf(0);
-
-							expect(res.body).to.have.property('public_space');
-							expect(res.body.public_space).to.be.an('array');
-							expect(res.body.public_space).to.have.lengthOf(0);
+								expect(stat.min).to.equal(10);
+								expect(stat.max).to.equal(10);
+								expect(stat.mean).to.equal(10);
+								expect(stat.count).to.equal(2);
+								expect(stat.variance).to.equal(0);
+							}
 						});
 		});
 

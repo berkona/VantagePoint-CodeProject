@@ -1,6 +1,7 @@
 
 exports.up = function(knex, Promise) {
 	return knex.schema.createTable('ipds', function (table) {
+		table.increments();
 		table.integer('playerID').unsigned().notNullable();
 		table.integer('entityID').unsigned().notNullable();
 		table.integer('distance').unsigned().notNullable();
@@ -9,8 +10,6 @@ exports.up = function(knex, Promise) {
 		table.index('playerID');
 		// index to make sorting by distance faster
 		table.index('distance');
-		// enforce unique-ness of (playerID, entityID) distance pairs
-		table.primary(['playerID', 'entityID']);
 	});
 };
 
