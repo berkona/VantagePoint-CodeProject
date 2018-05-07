@@ -16,10 +16,15 @@ var PERSONAL_SPACE_LIM = 120;
 var SOCIAL_SPACE_LIM = 360;
 
 var NUM_NEIGHBORS = 10;
+var PAGE_SIZE = 200;
 // end constants
 
 // helper fns
 
+/**
+ * Returns the space id given an interpersonal distance
+ * @returns non-zero natural number - id of space in { 0, 1, 2, 3}
+ */
 function getSpace(x) {
 	if (x < INTIMATE_SPACE_LIM) {
 		return INTIMATE_SPACE;
@@ -35,19 +40,25 @@ function getSpace(x) {
 	}
 }
 
-// expected error handling, just send message and code as per spec
+/**
+ * Helper fn for expected error handling, just sends a message and code as per spec
+ */ 
 function sendError(res, code, message) {
 	res.status(code).json({ message: message });
 }
 
-// exception handling, don"t bleed stack traces to outside world, but log them to console
+/**
+ * Helper fn for unexpected exception handling, don't bleed stack traces to outside world, but do log them to console
+ */
 function sendServerError(endPointName, res, err) {
 	console.error(endPointName + " - unexpected exception:");
 	console.error(err);
 	sendError(res, 500, "Unexpected exception during query, please contact web admin.");
 }
 
-// helper fn for validating numbers
+/**
+ * Helper fn for validating numbers
+ */ 
 function validNaturalNumber(id, min) {
 	return Number.isFinite(id) && id >= min;
 }
@@ -69,8 +80,6 @@ function createIPDEndpoints(knex) {
 		order: "asc",
 		sort: "distance",
 	};
-
-	var PAGE_SIZE = 200;
 
 	// implements end-point GET /ipd/<playerID>[?page=1&sort=distance&order=asc]
 	router.get("/:playerID", function (req, res) {
@@ -109,7 +118,7 @@ function createIPDEndpoints(knex) {
 			.limit(PAGE_SIZE)
 			// this causes query to be executed, and kicks off a promise chain to either return the data or an error message
 			.map(function (row) {
-				// map to a plain JS object to make sure we don"t bleed unintended information to the outside world
+				// map to a plain JS object to make sure we don't bleed unintended information to the outside world
 				return {
 					id: row.id,
 					d: row.d,
@@ -234,7 +243,7 @@ function createInsightEndpoints(knex) {
 
 		/*
 		  Find the "nearest neighbors" to playerID
-		  Define the distance between two playerIDs as being the difference between their average IPD"s to all entities
+		  Define the distance between two playerIDs as being the difference between their average IPD's to all entities
 		  The following is based on this query:
 		    
 		    SELECT `playerID` as `id`, AVG(`distance`) - ( SELECT AVG(`distance`) from `ipds` WHERE `playerID` = ?) as `neighbor_dist`
@@ -245,13 +254,21 @@ function createInsightEndpoints(knex) {
 		 	LIMIT ?
 
 		 */
+		// couldn't quickly find a way to do this select other than a raw query
 		var raw_inner = knex.raw("AVG(distance) - ( SELECT AVG(distance) from ipds WHERE `playerID` = ? ) as neighbor_dist", [ playerID ]);
 		var neighbor_query = knex("ipds")
 			.select("playerID as id", raw_inner)
 			.groupBy("playerID")
 			.orderBy("neighbor_dist")
 			.whereNot("playerID", playerID)
-			.limit(NUM_NEIGHBORS);
+			.limit(NUM_NEIGHBORS)
+			.map(function (row) {
+				// map to a plain JS object to make sure we don't bleed unintended information to the outside world
+				return {
+					id: row.id,
+					distance: row.neighbor_dist,
+				};
+			});
 
 		// this query does all the statistical insights
 		// we could have used a GROUP BY with an MIN/AVG/MAX/COUNT fn-s,

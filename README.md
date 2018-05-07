@@ -1,11 +1,20 @@
 # Requirements
 - Node >= 6 (tested w/ 6.10.0)
+- Bash (to run scripts)
+- Mocha (to run unit tests)
 
 # Installation
-"cd" into root directory, run "./scripts/install" to install.
+1) Clone project / Download zip
+2) "cd" into root directory
+3) run "./scripts/install" to install.
 
 # Running Server
-"cd" into root directory, run "./scripts/run" to run server
+1) "cd" into root directory
+2) run "./scripts/run" to run server
+
+# Running Tests
+1) "cd" into root directory
+2) run "./scripts/test"
 
 # Remarks
 I chose to use centimeters as the unit for distance since it allows the underlying database implementation to use integer storage rather than float storage.  Additionally, I chose centimeters rather than meters or decimeters since it gives a good amount of resolution across the expected input space (i.e., [0, 760]).  Obviously, most implementations of integers in SQL DBs will not be able to store distances above 2^32 cm (~43,000 km), which is most likely acceptable for this application.
