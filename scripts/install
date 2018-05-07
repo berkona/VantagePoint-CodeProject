@@ -1,0 +1,4 @@
+#!/bin/bash
+
+npm install
+node -e "var knex = require('knex')(require('./knexfile')[process.env.NODE_ENV || 'development']); knex.migrate.latest().then(function () { console.log('DB migrated to latest version'); knex.destroy(); }).catch(function(err) { console.error(err); knex.destory(); });"
