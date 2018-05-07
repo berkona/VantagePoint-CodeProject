@@ -29,7 +29,7 @@ The definition of "Personal space", etc. is based on the work done by Edward T. 
 
 # Endpoints
 
-## GET /ipd/<playerID>[?page=1&sort=distance&order=asc]
+## GET /ipd/&lt;playerID&gt;[?page=1&sort=distance&order=asc]
 Get a paginated list of all IPDs between <playerID> and other entities
 
 ### Params
