@@ -31,9 +31,9 @@ Get a paginated list of all IPDs between <playerID> and other entities
 
 ### Returns
 An object with the following fields:
-	distances: <array of distances> each item will be an object with the fields:
-		id: <integer> unique ID of the other half of this pair
-		d:  <natural number> how far (IPD) "id" was from <PlayerID> in cm
+	- distances: <array of distances> each item will be an object with the fields:
+		- id: <integer> unique ID of the other half of this pair
+		- d:  <natural number> how far (IPD) "id" was from <PlayerID> in cm
 
 ### Errors
 400: If any of the params are out of domain as defined above
@@ -47,8 +47,8 @@ Append a distance to the list of IPDs for <playerID>
 
 ### Body
 Body of the POST should be a JSON object with following fields:
-		id: <integer> unique ID of the other half of this pair
-		d:	<natural number> how far (IPD) "id" was from <playerID> in cm
+	- id: <integer> unique ID of the other half of this pair
+	- d:	<natural number> how far (IPD) "id" was from <playerID> in cm
 
 ### Returns
 No body on success, error message on error
@@ -64,15 +64,15 @@ Get all insights gained from <playerID> based on IPD.  Semantic definitions base
 
 ### Returns
 An object with the following fields:
-	stats: <map of entity id to object> each sub-object has all the fields:
-		min: <number> minimum IPD of player to all entities
-		max: <number> maximum IPD of player to all entities
-		mean: <number> average IPD of player to all entities
-		count: <natural number> number of IPD pairs
-		variance: <number> variance of the IPD 
-		crosses: <array of objects> each sub-object has fields:
-			length <natural number> how long in this segment?
-			space <natural number> ID of space (0 == INTIMATE, 1 = PERSONAL, 2 = SOCIAL, 3 = PUBLIC)
+	- stats: <map of entity id to object> each sub-object has all the fields:
+		- min: <number> minimum IPD of player to all entities
+		- max: <number> maximum IPD of player to all entities
+		- mean: <number> average IPD of player to all entities
+		- count: <natural number> number of IPD pairs
+		- variance: <number> variance of the IPD 
+		- crosses: <array of objects> each sub-object has fields:
+			- length <natural number> how long in this segment?
+			- space <natural number> ID of space (0 == INTIMATE, 1 = PERSONAL, 2 = SOCIAL, 3 = PUBLIC)
 
 	Definitions of 'space' based on Hall's work:
 		Intimate Space: [0, 45) cm
