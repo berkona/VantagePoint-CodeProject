@@ -1,18 +1,18 @@
 
-exports.up = function(knex, Promise) {
-	return knex.schema.createTable('ipds', function (table) {
+exports.up = function(knex) {
+	return knex.schema.createTable("ipds", function (table) {
 		table.increments();
-		table.integer('playerID').unsigned().notNullable();
-		table.integer('entityID').unsigned().notNullable();
-		table.integer('distance').unsigned().notNullable();
+		table.integer("playerID").unsigned().notNullable();
+		table.integer("entityID").unsigned().notNullable();
+		table.integer("distance").unsigned().notNullable();
 
 		// index to make searching by playerID faster
-		table.index('playerID');
+		table.index("playerID");
 		// index to make sorting by distance faster
-		table.index('distance');
+		table.index("distance");
 	});
 };
 
-exports.down = function(knex, Promise) {
-	return knex.schema.dropTable('ipds');
+exports.down = function(knex) {
+	return knex.schema.dropTable("ipds");
 };

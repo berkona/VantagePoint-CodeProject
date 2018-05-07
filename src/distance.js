@@ -18,4 +18,4 @@ module.exports = exports = function (a, b) {
 	var dY = a.y - b.y;
 	var dZ = a.z - b.z;
 	return Math.round(Math.sqrt(dX * dX + dY * dY + dZ * dZ));
-}
+};

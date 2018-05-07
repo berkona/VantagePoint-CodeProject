@@ -1,8 +1,8 @@
 
 // requires
 var Promise = require("bluebird");
-var express = require('express');
-var bodyParser = require('body-parser');
+var express = require("express");
+var bodyParser = require("body-parser");
 // end requires
 
 // some shared constants
@@ -40,7 +40,7 @@ function sendError(res, code, message) {
 	res.status(code).json({ message: message });
 }
 
-// exception handling, don't bleed stack traces to outside world, but log them to console
+// exception handling, don"t bleed stack traces to outside world, but log them to console
 function sendServerError(endPointName, res, err) {
 	console.error(endPointName + " - unexpected exception:");
 	console.error(err);
@@ -68,11 +68,11 @@ function createIPDEndpoints(knex) {
 		page: 1,
 		order: "asc",
 		sort: "distance",
- 	};
+	};
 
- 	var PAGE_SIZE = 200;
+	var PAGE_SIZE = 200;
 
- 	// implements end-point GET /ipd/<playerID>[?page=1&sort=distance&order=asc]
+	// implements end-point GET /ipd/<playerID>[?page=1&sort=distance&order=asc]
 	router.get("/:playerID", function (req, res) {
 		// merge defaults, query string and named URL params
 		// order of sources is important here
@@ -98,18 +98,18 @@ function createIPDEndpoints(knex) {
 
 		// everything is ok past here, so actually create query and hit DB
 		var n_skip = (params.page-1) * PAGE_SIZE;
-		var order_col = params.sort == 'id' ? 'entityID' : 'distance';
+		var order_col = params.sort == "id" ? "entityID" : "distance";
 
-		knex('ipds')
+		knex("ipds")
 			// this section builds the query
-			.where('playerID', params.playerID)
-			.select('entityID as id', 'distance as d')
+			.where("playerID", params.playerID)
+			.select("entityID as id", "distance as d")
 			.orderBy(order_col, params.order)
 			.offset(n_skip)
 			.limit(PAGE_SIZE)
 			// this causes query to be executed, and kicks off a promise chain to either return the data or an error message
 			.map(function (row) {
-				// map to a plain JS object to make sure we don't bleed unintended information to the outside world
+				// map to a plain JS object to make sure we don"t bleed unintended information to the outside world
 				return {
 					id: row.id,
 					d: row.d,
@@ -149,7 +149,7 @@ function createIPDEndpoints(knex) {
 			return sendError(res, 400, "'d' must be a natural number");
 		}
 
-		knex('ipds')
+		knex("ipds")
 			.insert(row)
 			.then(function () {
 				res.json();
@@ -163,8 +163,8 @@ function createIPDEndpoints(knex) {
 }
 
 /**
- * Process a sequence of IPD's for a single entityID
- * @returns All the insights gained from this sequence of IPD's
+ * Process a sequence of IPD"s for a single entityID
+ * @returns All the insights gained from this sequence of IPD"s
  */
 function processIPDRows(rows) {
 	var min = Number.POSITIVE_INFINITY;
@@ -204,7 +204,7 @@ function processIPDRows(rows) {
 		}
 	}
 	// variance is undefined for count == 1
-	var variance = count > 1 ? mean2 / (count - 1) : Number('nan');
+	var variance = count > 1 ? mean2 / (count - 1) : Number("nan");
 	return {
 		min: min,
 		max: max,
@@ -223,7 +223,7 @@ function createInsightEndpoints(knex) {
 	var router = express.Router();
 
 	// get insights based on IPD
-	router.get('/ipd/:playerID', function (req, res) {
+	router.get("/ipd/:playerID", function (req, res) {
 		// coerce params
 		var playerID = Number(req.params.playerID);
 
@@ -233,8 +233,8 @@ function createInsightEndpoints(knex) {
 		}
 
 		/*
-		  Find the 'nearest neighbors' to playerID
-		  Define the distance between two playerIDs as being the difference between their average IPD's to all entities
+		  Find the "nearest neighbors" to playerID
+		  Define the distance between two playerIDs as being the difference between their average IPD"s to all entities
 		  The following is based on this query:
 		    
 		    SELECT `playerID` as `id`, AVG(`distance`) - ( SELECT AVG(`distance`) from `ipds` WHERE `playerID` = ?) as `neighbor_dist`
@@ -246,24 +246,24 @@ function createInsightEndpoints(knex) {
 
 		 */
 		var raw_inner = knex.raw("AVG(distance) - ( SELECT AVG(distance) from ipds WHERE `playerID` = ? ) as neighbor_dist", [ playerID ]);
-		var neighbor_query = knex('ipds')
-			.select('playerID as id', raw_inner)
-			.groupBy('playerID')
-			.orderBy('neighbor_dist')
-			.whereNot('playerID', playerID)
+		var neighbor_query = knex("ipds")
+			.select("playerID as id", raw_inner)
+			.groupBy("playerID")
+			.orderBy("neighbor_dist")
+			.whereNot("playerID", playerID)
 			.limit(NUM_NEIGHBORS);
 
 		// this query does all the statistical insights
 		// we could have used a GROUP BY with an MIN/AVG/MAX/COUNT fn-s,
 		// but I also wanted to determine time spent in a specific "space" and number of times crossed from space X to Y, etc.
 		// see processIPDRows for details about statistics gained
-		var stats_query = knex('ipds')
-			.where('playerID', playerID)
-			.orderBy('id', 'asc')
+		var stats_query = knex("ipds")
+			.where("playerID", playerID)
+			.orderBy("id", "asc")
 			.then(function (rows) {
 				var aggregated = rows.reduce(function (accum, row) {
 					if (!accum[row.entityID])
-						accum[row.entityID] = []
+						accum[row.entityID] = [];
 					accum[row.entityID].push(row);
 					return accum;
 				}, {});
@@ -280,12 +280,12 @@ function createInsightEndpoints(knex) {
 			stats: stats_query,
 			neighbors: neighbor_query,
 		})
-		.then(function (data) {
-			res.json(data);
-		})
-		.catch(function (err) {
-			sendServerError('GET /insights/ipd/:playerID', res, err);
-		});
+			.then(function (data) {
+				res.json(data);
+			})
+			.catch(function (err) {
+				sendServerError("GET /insights/ipd/:playerID", res, err);
+			});
 	});
 
 	return router;
@@ -311,13 +311,13 @@ function createAPI(knex) {
  * @returns an express application configured for listening
  */
 function createApp() {
-	var environment = process.env.NODE_ENV || 'development'
-	var knex_config = require('../knexfile')[environment];
+	var environment = process.env.NODE_ENV || "development";
+	var knex_config = require("../knexfile")[environment];
 	if (!knex_config)
 		return console.error("Cannot find knex config for environment: " + environment);
 
 	//create db connection
-	var knex = require('knex')(knex_config);
+	var knex = require("knex")(knex_config);
 
 	// setup express app
 	var app = express();
@@ -334,7 +334,7 @@ function createApp() {
  * Entry point for server
  */
 function main() {
-	app = createApp();
+	var app = createApp();
 
 	// spin-up server
 	var app_port = process.env.NODE_PORT || 3000;
@@ -347,7 +347,7 @@ function main() {
 	});
 }
 
-// either run the server or export the app depending on if we're required or called directly from CLI
+// either run the server or export the app depending on if we"re required or called directly from CLI
 if (require.main === module) {
 	main();
 } else {
